@@ -11,6 +11,14 @@ trait IPropertyToken<TContractState> {
     fn withdraw_funds(ref self: TContractState);
     fn transfer(ref self: TContractState, to: ContractAddress, property_id: u256, amount: u256);
     fn burn(ref self: TContractState, property_id: u256, amount: u256);
+    fn set_property_name(ref self: TContractState, property_id: u256, name: felt252);
+    fn get_property_name(self: @TContractState, property_id: u256) -> felt252;
+    fn set_property_description(ref self: TContractState, property_id: u256, description: felt252);
+    fn get_property_description(self: @TContractState, property_id: u256) -> felt252;
+    fn set_property_location(ref self: TContractState, property_id: u256, location: felt252);
+    fn get_property_location(self: @TContractState, property_id: u256) -> felt252;
+    fn set_property_size(ref self: TContractState, property_id: u256, size: u256);
+    fn get_property_size(self: @TContractState, property_id: u256) -> u256;
 }
 
 #[starknet::contract]
@@ -28,6 +36,11 @@ mod PropertyToken {
         total_supply: Map::<u256, u256>,
         // Mapping from property ID to its price in STRK
         property_prices: Map::<u256, u256>,
+        // Property metadata
+        property_names: Map::<u256, felt252>,
+        property_descriptions: Map::<u256, felt252>,
+        property_locations: Map::<u256, felt252>,
+        property_sizes: Map::<u256, u256>,
         // Owner address
         owner: ContractAddress,
         // Contract balance
@@ -41,6 +54,7 @@ mod PropertyToken {
         PropertyPriceSet: PropertyPriceSet,
         FundsWithdrawn: FundsWithdrawn,
         Burn: Burn,
+        PropertyMetadataUpdated: PropertyMetadataUpdated,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -70,6 +84,13 @@ mod PropertyToken {
         from: ContractAddress,
         id: u256,
         value: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct PropertyMetadataUpdated {
+        property_id: u256,
+        field: felt252,
+        value: felt252,
     }
 
     #[constructor]
@@ -192,6 +213,82 @@ mod PropertyToken {
                 id: property_id,
                 value: amount
             });
+        }
+
+        fn set_property_name(ref self: ContractState, property_id: u256, name: felt252) {
+            // Only owner can set metadata
+            assert(self.owner.read() == get_caller_address(), 'Caller is not the owner');
+            
+            // Store name
+            self.property_names.write(property_id, name);
+            
+            // Emit event
+            self.emit(PropertyMetadataUpdated { 
+                property_id: property_id,
+                field: 'name',
+                value: name
+            });
+        }
+
+        fn get_property_name(self: @ContractState, property_id: u256) -> felt252 {
+            self.property_names.read(property_id)
+        }
+
+        fn set_property_description(ref self: ContractState, property_id: u256, description: felt252) {
+            // Only owner can set metadata
+            assert(self.owner.read() == get_caller_address(), 'Caller is not the owner');
+            
+            // Store description
+            self.property_descriptions.write(property_id, description);
+            
+            // Emit event
+            self.emit(PropertyMetadataUpdated { 
+                property_id: property_id,
+                field: 'description',
+                value: description
+            });
+        }
+
+        fn get_property_description(self: @ContractState, property_id: u256) -> felt252 {
+            self.property_descriptions.read(property_id)
+        }
+
+        fn set_property_location(ref self: ContractState, property_id: u256, location: felt252) {
+            // Only owner can set metadata
+            assert(self.owner.read() == get_caller_address(), 'Caller is not the owner');
+            
+            // Store location
+            self.property_locations.write(property_id, location);
+            
+            // Emit event
+            self.emit(PropertyMetadataUpdated { 
+                property_id: property_id,
+                field: 'location',
+                value: location
+            });
+        }
+
+        fn get_property_location(self: @ContractState, property_id: u256) -> felt252 {
+            self.property_locations.read(property_id)
+        }
+
+        fn set_property_size(ref self: ContractState, property_id: u256, size: u256) {
+            // Only owner can set metadata
+            assert(self.owner.read() == get_caller_address(), 'Caller is not the owner');
+            
+            // Store size
+            self.property_sizes.write(property_id, size);
+            
+            // Emit event
+            self.emit(PropertyMetadataUpdated { 
+                property_id: property_id,
+                field: 'size',
+                value: size.try_into().unwrap()
+            });
+        }
+
+        fn get_property_size(self: @ContractState, property_id: u256) -> u256 {
+            self.property_sizes.read(property_id)
         }
     }
 } 
