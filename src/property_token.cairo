@@ -9,6 +9,8 @@ trait IPropertyToken<TContractState> {
     fn get_property_price(self: @TContractState, property_id: u256) -> u256;
     fn set_property_price(ref self: TContractState, property_id: u256, price: u256);
     fn withdraw_funds(ref self: TContractState);
+    fn transfer(ref self: TContractState, to: ContractAddress, property_id: u256, amount: u256);
+    fn burn(ref self: TContractState, property_id: u256, amount: u256);
 }
 
 #[starknet::contract]
@@ -38,6 +40,7 @@ mod PropertyToken {
         TransferSingle: TransferSingle,
         PropertyPriceSet: PropertyPriceSet,
         FundsWithdrawn: FundsWithdrawn,
+        Burn: Burn,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -59,6 +62,14 @@ mod PropertyToken {
     struct FundsWithdrawn {
         amount: u256,
         to: ContractAddress,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct Burn {
+        operator: ContractAddress,
+        from: ContractAddress,
+        id: u256,
+        value: u256,
     }
 
     #[constructor]
@@ -133,6 +144,53 @@ mod PropertyToken {
             self.emit(FundsWithdrawn { 
                 amount: amount,
                 to: self.owner.read()
+            });
+        }
+
+        fn transfer(ref self: ContractState, to: ContractAddress, property_id: u256, amount: u256) {
+            let from = get_caller_address();
+            
+            // Check if sender has enough tokens
+            let from_balance = self.balances.read((from, property_id));
+            assert(from_balance >= amount, 'Insufficient token balance');
+            
+            // Update sender's balance
+            self.balances.write((from, property_id), from_balance - amount);
+            
+            // Update recipient's balance
+            let to_balance = self.balances.read((to, property_id));
+            self.balances.write((to, property_id), to_balance + amount);
+            
+            // Emit transfer event
+            self.emit(TransferSingle { 
+                operator: from,
+                from: from,
+                to: to,
+                id: property_id,
+                value: amount
+            });
+        }
+
+        fn burn(ref self: ContractState, property_id: u256, amount: u256) {
+            let from = get_caller_address();
+            
+            // Check if sender has enough tokens
+            let from_balance = self.balances.read((from, property_id));
+            assert(from_balance >= amount, 'Insufficient token balance');
+            
+            // Update sender's balance
+            self.balances.write((from, property_id), from_balance - amount);
+            
+            // Update total supply
+            let current_supply = self.total_supply.read(property_id);
+            self.total_supply.write(property_id, current_supply - amount);
+            
+            // Emit burn event
+            self.emit(Burn { 
+                operator: from,
+                from: from,
+                id: property_id,
+                value: amount
             });
         }
     }
