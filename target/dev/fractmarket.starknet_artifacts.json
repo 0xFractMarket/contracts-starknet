@@ -1,0 +1,1 @@
+{"version":1,"contracts":[{"id":"7cilq1t3sahni","package_name":"fractmarket","contract_name":"PropertyToken","module_path":"fractmarket::property_token::PropertyToken","artifacts":{"sierra":"fractmarket_PropertyToken.contract_class.json","casm":"fractmarket_PropertyToken.compiled_contract_class.json"}}]}
